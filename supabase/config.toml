@@ -1,0 +1,7 @@
+project_id = "enuiabeidlnylfungxsr"
+
+[functions.domain-diagnostics]
+verify_jwt = false
+
+[functions.root-cause-analysis]
+verify_jwt = false
