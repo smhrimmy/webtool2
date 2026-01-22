@@ -37,8 +37,9 @@ const DNS_RESOLVERS = [
   { name: 'Optus', location: 'Melbourne', country: 'Australia', countryCode: 'AU', ip: '211.29.132.12', region: 'Australia' },
 ];
 
-// RDAP bootstrap URLs for different TLDs
+// Comprehensive RDAP bootstrap URLs for all TLD types
 const RDAP_BOOTSTRAP: Record<string, string> = {
+  // --- Generic TLDs (gTLDs) ---
   'com': 'https://rdap.verisign.com/com/v1',
   'net': 'https://rdap.verisign.com/net/v1',
   'org': 'https://rdap.publicinterestregistry.org/rdap',
@@ -76,6 +77,18 @@ const RDAP_BOOTSTRAP: Record<string, string> = {
   'coop': 'https://rdap.nic.coop',
   'museum': 'https://rdap.museum',
   'int': 'https://rdap.iana.org',
+  'ai': 'https://rdap.nic.ai',
+  'page': 'https://rdap.nic.google',
+  'blog': 'https://rdap.nic.google',
+  'design': 'https://rdap.nic.design',
+  'store': 'https://rdap.centralnic.com/store',
+  'website': 'https://rdap.centralnic.com/website',
+  'fun': 'https://rdap.centralnic.com/fun',
+  'space': 'https://rdap.centralnic.com/space',
+  'press': 'https://rdap.centralnic.com/press',
+  'host': 'https://rdap.centralnic.com/host',
+  
+  // --- European ccTLDs ---
   'uk': 'https://rdap.nominet.uk/uk',
   'de': 'https://rdap.denic.de',
   'fr': 'https://rdap.nic.fr',
@@ -106,6 +119,8 @@ const RDAP_BOOTSTRAP: Record<string, string> = {
   'ee': 'https://rdap.internet.ee',
   'lv': 'https://rdap.nic.lv',
   'lt': 'https://rdap.domreg.lt',
+  
+  // --- Americas ccTLDs ---
   'ca': 'https://rdap.ca.fury.ca',
   'br': 'https://rdap.registro.br',
   'mx': 'https://rdap.nic.mx',
@@ -118,6 +133,8 @@ const RDAP_BOOTSTRAP: Record<string, string> = {
   'cr': 'https://rdap.nic.cr',
   'do': 'https://rdap.nic.do',
   'hn': 'https://rdap.nic.hn',
+  
+  // --- Asia/Pacific ccTLDs ---
   'au': 'https://rdap.auda.org.au',
   'nz': 'https://rdap.dnc.org.nz',
   'jp': 'https://rdap.jprs.jp',
@@ -132,6 +149,8 @@ const RDAP_BOOTSTRAP: Record<string, string> = {
   'vn': 'https://rdap.vnnic.vn',
   'th': 'https://rdap.thnic.co.th',
   'ph': 'https://rdap.dot.ph',
+  
+  // --- Other ccTLDs & Regions ---
   'ru': 'https://rdap.tcinet.ru',
   'su': 'https://rdap.tcinet.ru',
   'ir': 'https://rdap.nic.ir',
@@ -139,6 +158,13 @@ const RDAP_BOOTSTRAP: Record<string, string> = {
   'il': 'https://rdap.isoc.org.il',
   'ua': 'https://rdap.hostmaster.ua',
   'kz': 'https://rdap.nic.kz',
+  'by': 'https://rdap.cctld.by',
+  'rs': 'https://rdap.rnids.rs',
+  'ge': 'https://rdap.nic.ge',
+  'qa': 'https://rdap.registry.qa',
+  'tn': 'https://rdap.nic.tn',
+  'ae': 'https://rdap.aeda.ae',
+  'la': 'https://rdap.centralnic.com/la',
 };
 
 const WAF_CDN_SIGNATURES = {
@@ -210,13 +236,20 @@ async function queryDNS(domain: string, type: string, resolver: typeof DNS_RESOL
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
     
-    const url = `https://dns.google/resolve?name=${domain}&type=${type}`;
+    // Fallback logic for DNS over HTTPS providers if one fails
+    let url = `https://dns.google/resolve?name=${domain}&type=${type}`;
+    // Some domains might work better with Cloudflare if Google fails, but for now stick to one standard
     
     const response = await fetch(url, {
       headers: { 'Accept': 'application/dns-json' },
       signal: controller.signal
     });
     clearTimeout(timeout);
+    
+    if (!response.ok) {
+        throw new Error(`DNS Query failed: ${response.status}`);
+    }
+
     const data = await response.json();
     const responseTime = Date.now() - start;
     
@@ -261,20 +294,29 @@ async function queryDNS(domain: string, type: string, resolver: typeof DNS_RESOL
 
 function getRDAPServer(domain: string): string | null {
   const parts = domain.split('.');
-  const tld = parts.length > 2 && ['co', 'com', 'org', 'net', 'gov', 'edu'].includes(parts[parts.length - 2]) 
-    ? `${parts[parts.length - 2]}.${parts[parts.length - 1]}`
-    : parts.pop()?.toLowerCase();
-  if (!tld) return null;
-  return RDAP_BOOTSTRAP[tld] || null;
+  
+  // Robust TLD extraction
+  // 1. Check for known 2-part TLDs (co.uk, com.au, etc.)
+  if (parts.length > 2) {
+      const tld2 = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+      if (RDAP_BOOTSTRAP[tld2]) return RDAP_BOOTSTRAP[tld2];
+  }
+  
+  // 2. Check for standard 1-part TLD
+  const tld1 = parts[parts.length - 1]?.toLowerCase();
+  if (tld1 && RDAP_BOOTSTRAP[tld1]) return RDAP_BOOTSTRAP[tld1];
+  
+  return null;
 }
 
 async function fetchWHOIS(domain: string) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4000);
+  const timeout = setTimeout(() => controller.abort(), 5000); // Increased timeout for better reach
   
   try {
     const rdapServer = getRDAPServer(domain);
     
+    // Strategy 1: Known RDAP Server
     if (rdapServer) {
       try {
         const rdapResponse = await fetch(`${rdapServer}/domain/${domain}`, {
@@ -287,9 +329,13 @@ async function fetchWHOIS(domain: string) {
           const data = await rdapResponse.json();
           return parseRDAPResponse(data, domain);
         }
-      } catch (e) {}
+      } catch (e) {
+          // Continue to fallback
+      }
     }
     
+    // Strategy 2: IANA Bootstrap (Generic fallback)
+    // Many new gTLDs are automatically handled here
     try {
       const bootstrapResponse = await fetch(`https://rdap.org/domain/${domain}`, {
         headers: { 'Accept': 'application/rdap+json' },
@@ -301,7 +347,22 @@ async function fetchWHOIS(domain: string) {
         const data = await bootstrapResponse.json();
         return parseRDAPResponse(data, domain);
       }
-    } catch (e) {}
+    } catch (e) {
+        // Continue to fallback
+    }
+
+    // Strategy 3: Try Google RDAP as a last resort for generic TLDs
+    try {
+        const googleResponse = await fetch(`https://rdap.nic.google/domain/${domain}`, {
+            headers: { 'Accept': 'application/rdap+json' },
+            signal: controller.signal
+        });
+        if (googleResponse.ok) {
+            clearTimeout(timeout);
+            const data = await googleResponse.json();
+            return parseRDAPResponse(data, domain);
+        }
+    } catch(e) {}
     
     clearTimeout(timeout);
     return null;
