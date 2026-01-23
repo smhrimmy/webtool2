@@ -153,16 +153,70 @@ export function ScanProvider({ children }: { children: ReactNode }) {
     try {
       const typesToScan = selectedTypes.length <= 1 ? ALL_RECORD_TYPES : selectedTypes;
 
-      // 1. Fire DNS Request (High Priority)
-      const dnsPromise = fetch('/api/domain-diagnostics', {
+      // 1. Fire DNS Request (High Priority - Split Strategy)
+      // First: Fast Core Resolvers (Immediate feedback)
+      const dnsFastPromise = fetch('/api/domain-diagnostics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ domain: searchDomain, recordTypes: typesToScan, mode: 'dns' })
+          body: JSON.stringify({ domain: searchDomain, recordTypes: typesToScan, mode: 'dns', resolverMode: 'fast' })
       }).then(async res => {
           const data = await res.json();
           if (data.dnsRecords) {
-              setDnsResults(data.dnsRecords);
+              setDnsResults(prev => {
+                  const next = { ...prev };
+                  Object.keys(data.dnsRecords).forEach((type: any) => {
+                      if (!next[type]) {
+                          next[type] = data.dnsRecords[type];
+                      } else {
+                          next[type] = next[type].map(existingRegion => {
+                              const newRegion = data.dnsRecords[type].find((r: any) => r.name === existingRegion.name);
+                              if (!newRegion) return existingRegion;
+                              
+                              const existingResolvers = new Set(existingRegion.results.map((r: any) => r.resolver));
+                              const newResults = newRegion.results.filter((r: any) => !existingResolvers.has(r.resolver));
+                              
+                              return {
+                                  ...existingRegion,
+                                  results: [...existingRegion.results, ...newResults]
+                              };
+                          });
+                      }
+                  });
+                  return next;
+              });
               updateResult({ dnsRecords: data.dnsRecords });
+          }
+      });
+
+      // Second: Detailed/Rest of Resolvers
+      const dnsDetailedPromise = fetch('/api/domain-diagnostics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain: searchDomain, recordTypes: typesToScan, mode: 'dns', resolverMode: 'detailed' })
+      }).then(async res => {
+          const data = await res.json();
+          if (data.dnsRecords) {
+               setDnsResults(prev => {
+                  const next = { ...prev };
+                  Object.keys(data.dnsRecords).forEach((type: any) => {
+                      if (!next[type]) {
+                          next[type] = data.dnsRecords[type];
+                      } else {
+                          next[type] = next[type].map(existingRegion => {
+                              const newRegion = data.dnsRecords[type].find((r: any) => r.name === existingRegion.name);
+                              if (!newRegion) return existingRegion;
+                              const existingResolvers = new Set(existingRegion.results.map((r: any) => r.resolver));
+                              const newResults = newRegion.results.filter((r: any) => !existingResolvers.has(r.resolver));
+                              return {
+                                  ...existingRegion,
+                                  results: [...existingRegion.results, ...newResults]
+                              };
+                          });
+                      }
+                  });
+                  updateResult({ dnsRecords: next });
+                  return next;
+              });
           }
       });
 

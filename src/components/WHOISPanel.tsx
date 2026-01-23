@@ -30,6 +30,19 @@ export function WHOISPanel({ data, isLoading, error, onRefresh }: WHOISPanelProp
       }
   };
 
+  const formatDate = (dateString: string) => {
+      if (!dateString) return 'N/A';
+      try {
+          return new Date(dateString).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+          });
+      } catch (e) {
+          return dateString;
+      }
+  };
+
   if (isLoading && !data) {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-gray-500 gap-3 bg-[#111111] rounded-lg border border-white/5">
