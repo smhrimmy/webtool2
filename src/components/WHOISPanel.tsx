@@ -73,7 +73,15 @@ export function WHOISPanel({ data, isLoading, error, onRefresh }: WHOISPanelProp
     <div className="space-y-6 font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
-         <h2 className="text-2xl font-bold text-white">{data.domain}</h2>
+         <div className="flex items-center gap-3">
+             <h2 className="text-2xl font-bold text-white">{data.domain}</h2>
+             {data.isPrivate && (
+                 <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/20 gap-1">
+                     <Lock className="w-3 h-3" />
+                     Privacy Protection
+                 </Badge>
+             )}
+         </div>
          <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">Updated just now</span>
             <Button 
@@ -96,9 +104,9 @@ export function WHOISPanel({ data, isLoading, error, onRefresh }: WHOISPanelProp
          </div>
          <div className="p-4">
             <DataRow label="Domain" value={data.domain} copyValue={data.domain} fieldName="Domain" />
-            <DataRow label="Registered On" value={data.creationDate ? new Date(data.creationDate).toISOString().split('T')[0] : ''} />
-            <DataRow label="Expires On" value={data.expiryDate ? new Date(data.expiryDate).toISOString().split('T')[0] : ''} />
-            <DataRow label="Updated On" value={data.updatedDate ? new Date(data.updatedDate).toISOString().split('T')[0] : ''} />
+            <DataRow label="Registered On" value={formatDate(data.creationDate)} copyValue={formatDate(data.creationDate)} fieldName="Registered Date" />
+            <DataRow label="Expires On" value={formatDate(data.expiryDate)} copyValue={formatDate(data.expiryDate)} fieldName="Expiry Date" />
+            <DataRow label="Updated On" value={formatDate(data.updatedDate)} copyValue={formatDate(data.updatedDate)} fieldName="Updated Date" />
             <DataRow label="Status" value={data.status.join(', ')} />
             <div className="flex items-start py-2 border-b border-white/5 last:border-0 group">
                 <div className="w-1/3 text-sm text-gray-500 font-medium">Name Servers:</div>

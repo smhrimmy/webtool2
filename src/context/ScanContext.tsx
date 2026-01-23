@@ -218,26 +218,12 @@ export function ScanProvider({ children }: { children: ReactNode }) {
       // Actually, we want to clear "isLoading" once the CRITICAL parts are done?
       // Or just let it flow. The UI updates Reactively.
       
-      await Promise.all([dnsPromise, whoisPromise]);
+      await Promise.all([dnsFastPromise, whoisPromise]);
       
-      if (!isAutoRefresh) {
-          // We can stop showing "Loading" spinner once DNS/WHOIS are in, 
-          // as the user perceives "Results" are here.
-          // Or wait for everything? 
-          // User said "immediatly".
-          // Let's keep isLoading true until everything is done, BUT the UI will render partials if we allow it.
-          // However, if `isLoading` is true, the UI might show skeletons.
-          // We should check `result` in the UI components instead of just `isLoading`.
-          // But to be safe, let's wait for all.
-          // Actually, if we want "Immediate" feel, we should probably toggle isLoading off sooner?
-          // Let's stick to standard Promise.all for "Loading State" consistency, 
-          // but because we are updating state *inside* the promises, the UI *will* re-render with partial data 
-          // even while `isLoading` is true, PROVIDED the UI components handle (data || loading).
-          // If UI shows "Skeleton" ONLY when loading, we won't see partials.
-          // I will check UI components next.
-      }
+      // We can turn off "Main Loading" here to let the user see the fast results immediately
+      if (!isAutoRefresh) setIsLoading(false);
       
-      await Promise.all(otherPromises);
+      await Promise.all([dnsDetailedPromise, ...otherPromises]);
 
       if (!isAutoRefresh) {
           // Finalize

@@ -5,6 +5,9 @@ export const config = {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
 };
 
 // Extended DNS resolvers for true global coverage (similar to dnschecker.org)
@@ -46,7 +49,7 @@ const DNS_RESOLVERS = [
   // --- Oceania ---
   { name: 'Telstra (AU)', location: 'Sydney', country: 'Australia', countryCode: 'AU', ip: '139.130.4.5', region: 'Australia' },
   { name: 'Optus (AU)', location: 'Melbourne', country: 'Australia', countryCode: 'AU', ip: '211.29.132.12', region: 'Australia' },
-  { name: 'Cloudflare (NZ)', location: 'Auckland', country: 'New Zealand', countryCode: 'NZ', ip: '1.0.0.1', region: 'Australia' }, // Using 1.0.0.1 as proxy for NZ region check
+  { name: 'Cloudflare (NZ)', location: 'Auckland', country: 'New Zealand', countryCode: 'NZ', ip: '1.0.0.1', region: 'Australia' },
 
   // --- Africa ---
   { name: 'MTN (ZA)', location: 'Johannesburg', country: 'South Africa', countryCode: 'ZA', ip: '196.43.34.70', region: 'Africa' },
@@ -55,7 +58,6 @@ const DNS_RESOLVERS = [
   { name: 'Telecom Egypt (EG)', location: 'Cairo', country: 'Egypt', countryCode: 'EG', ip: '84.36.0.7', region: 'Africa' },
 ];
 
-// Comprehensive RDAP bootstrap URLs for all TLD types
 const RDAP_BOOTSTRAP: Record<string, string> = {
   // --- Generic TLDs (gTLDs) ---
   'com': 'https://rdap.verisign.com/com/v1',
@@ -252,14 +254,15 @@ async function queryDNS(domain: string, type: string, resolver: typeof DNS_RESOL
   const start = Date.now();
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
+    const timeout = setTimeout(() => controller.abort(), 2000); // Tighter timeout for speed
     
-    // Using Google DoH as the underlying transport
-    const url = `https://dns.google/resolve?name=${domain}&type=${type}`;
+    // Using Google DoH as the underlying transport with random ID to prevent caching
+    const url = `https://dns.google/resolve?name=${domain}&type=${type}&cd=1&random=${Math.random()}`;
     
     const response = await fetch(url, {
       headers: { 'Accept': 'application/dns-json' },
-      signal: controller.signal
+      signal: controller.signal,
+      cache: 'no-store'
     });
     clearTimeout(timeout);
     
@@ -333,7 +336,8 @@ async function fetchWHOIS(domain: string) {
       try {
         const rdapResponse = await fetch(`${rdapServer}/domain/${domain}`, {
           headers: { 'Accept': 'application/rdap+json' },
-          signal: controller.signal
+          signal: controller.signal,
+          cache: 'no-store'
         });
         if (rdapResponse.ok) {
           clearTimeout(timeout);
@@ -345,7 +349,8 @@ async function fetchWHOIS(domain: string) {
     try {
       const bootstrapResponse = await fetch(`https://rdap.org/domain/${domain}`, {
         headers: { 'Accept': 'application/rdap+json' },
-        signal: controller.signal
+        signal: controller.signal,
+        cache: 'no-store'
       });
       if (bootstrapResponse.ok) {
         clearTimeout(timeout);
@@ -356,7 +361,8 @@ async function fetchWHOIS(domain: string) {
     try {
         const googleResponse = await fetch(`https://rdap.nic.google/domain/${domain}`, {
             headers: { 'Accept': 'application/rdap+json' },
-            signal: controller.signal
+            signal: controller.signal,
+            cache: 'no-store'
         });
         if (googleResponse.ok) {
             clearTimeout(timeout);
@@ -414,6 +420,14 @@ function parseRDAPResponse(data: any, domain: string) {
   }
   const status = data.status || [];
   const dnssec = data.secureDNS?.delegationSigned ? 'signedDelegation' : 'unsigned';
+  
+  // Enhanced Privacy Detection
+  const isPrivate = status.some((s: string) => 
+    s.toLowerCase().includes('private') || 
+    s.toLowerCase().includes('redacted') ||
+    s.toLowerCase().includes('proxy')
+  ) || registrar.toLowerCase().includes('privacy') || registrar.toLowerCase().includes('proxy');
+
   return {
     domain: data.ldhName || domain,
     registrar,
@@ -425,8 +439,25 @@ function parseRDAPResponse(data: any, domain: string) {
     nameservers,
     dnssec,
     registrarAbuseContact,
-    isPrivate: status.some((s: string) => s.includes('private') || s.includes('redacted')),
+    isPrivate,
   };
+}
+
+async function getIPInfo(ip: string) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,regionName,city,isp,org,as,query`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (response.ok) {
+      return await response.json();
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
 
 async function checkWebsite(domain: string) {
@@ -461,6 +492,13 @@ async function checkWebsite(domain: string) {
     const headers = Object.fromEntries(response.headers.entries());
     const responseTime = Date.now() - start;
     const { ipv4, ipv6 } = await ipPromise;
+    
+    // Fetch IP Info if IPv4 is present
+    let ipInfo = null;
+    if (ipv4) {
+        ipInfo = await getIPInfo(ipv4);
+    }
+
     return {
       statusCode: response.status,
       statusText: response.statusText,
@@ -468,6 +506,7 @@ async function checkWebsite(domain: string) {
       serverType: headers['server'] || 'Unknown',
       ipv4,
       ipv6,
+      ipInfo,
       redirectChain: [response.url],
       compression: headers['content-encoding'] || 'none',
       phpVersion: headers['x-powered-by'],
@@ -669,7 +708,7 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const { domain, recordTypes = ['A'], mode = 'all' } = await req.json();
+    const { domain, recordTypes = ['A'], mode = 'all', resolverMode = 'all' } = await req.json();
     
     if (!domain) {
       return new Response(JSON.stringify({ error: 'Domain is required' }), {
@@ -683,9 +722,20 @@ export default async function handler(req: Request) {
       .replace(/^www\./, '')
       .replace(/\/.*$/, '');
     
+    // Helper to filter resolvers
+    const getResolvers = () => {
+        if (resolverMode === 'fast') {
+            return DNS_RESOLVERS.filter(r => ['Google (US)', 'Cloudflare (US)', 'OpenDNS (US)', 'Quad9 (US)'].includes(r.name));
+        }
+        if (resolverMode === 'detailed') {
+            return DNS_RESOLVERS.filter(r => !['Google (US)', 'Cloudflare (US)', 'OpenDNS (US)', 'Quad9 (US)'].includes(r.name));
+        }
+        return DNS_RESOLVERS;
+    };
+    
     // Mode-based execution for faster partial updates
     if (mode === 'dns') {
-        const resolversToCheck = DNS_RESOLVERS;
+        const resolversToCheck = getResolvers();
         const dnsPromise = Promise.all(recordTypes.map(async (type: string) => {
           const results = await Promise.all(resolversToCheck.map(resolver => queryDNS(cleanDomain, type, resolver)));
           const regions = ['North America', 'Europe', 'Asia', 'South America', 'Africa', 'Australia'];
