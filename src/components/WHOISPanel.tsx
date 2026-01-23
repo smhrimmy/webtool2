@@ -21,7 +21,7 @@ export function WHOISPanel({ data, isLoading, error }: WHOISPanelProps) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-gray-500 gap-3 bg-white rounded-lg border border-gray-200">
+      <div className="flex flex-col items-center justify-center h-48 text-gray-500 gap-3 bg-[#111111] rounded-lg border border-white/5">
         <RefreshCw className="w-6 h-6 animate-spin" />
         <span className="text-sm font-medium">Retrieving WHOIS data...</span>
       </div>
@@ -30,7 +30,7 @@ export function WHOISPanel({ data, isLoading, error }: WHOISPanelProps) {
 
   if (error || !data) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-gray-500 gap-3 bg-white rounded-lg border border-gray-200">
+      <div className="flex flex-col items-center justify-center h-48 text-gray-500 gap-3 bg-[#111111] rounded-lg border border-white/5">
         <AlertTriangle className="w-6 h-6 text-yellow-500" />
         <span className="text-sm font-medium">{error || "No Data Available"}</span>
       </div>
@@ -38,9 +38,9 @@ export function WHOISPanel({ data, isLoading, error }: WHOISPanelProps) {
   }
 
   const DataRow = ({ label, value, isLink = false }: { label: string; value: string | React.ReactNode, isLink?: boolean }) => (
-    <div className="flex items-start py-2 border-b border-gray-100 last:border-0">
+    <div className="flex items-start py-2 border-b border-white/5 last:border-0">
       <div className="w-1/3 text-sm text-gray-500 font-medium">{label}:</div>
-      <div className={`w-2/3 text-sm font-medium break-all ${isLink ? 'text-blue-600 hover:underline cursor-pointer' : 'text-gray-900'}`}>
+      <div className={`w-2/3 text-sm font-medium break-all ${isLink ? 'text-blue-400 hover:underline cursor-pointer' : 'text-gray-200'}`}>
         {value || "N/A"}
       </div>
     </div>
@@ -50,7 +50,7 @@ export function WHOISPanel({ data, isLoading, error }: WHOISPanelProps) {
     <div className="space-y-6 font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
-         <h2 className="text-2xl font-bold text-gray-900">{data.domain}</h2>
+         <h2 className="text-2xl font-bold text-white">{data.domain}</h2>
          <div className="flex items-center gap-1 text-xs text-gray-500">
             <span>Updated 1 second ago</span>
             <RefreshCw className="w-3 h-3" />
@@ -58,10 +58,10 @@ export function WHOISPanel({ data, isLoading, error }: WHOISPanelProps) {
       </div>
 
       {/* Domain Information Card */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
+      <div className="bg-[#111111] rounded-lg border border-white/5 shadow-sm overflow-hidden">
+         <div className="bg-white/5 px-4 py-3 border-b border-white/5 flex items-center gap-2">
             <Globe className="w-4 h-4 text-orange-500" />
-            <h3 className="font-bold text-gray-800 text-sm">Domain Information</h3>
+            <h3 className="font-bold text-gray-200 text-sm">Domain Information</h3>
          </div>
          <div className="p-4">
             <DataRow label="Domain" value={data.domain} />
@@ -78,10 +78,10 @@ export function WHOISPanel({ data, isLoading, error }: WHOISPanelProps) {
       </div>
 
       {/* Registrar Information Card */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
+      <div className="bg-[#111111] rounded-lg border border-white/5 shadow-sm overflow-hidden">
+         <div className="bg-white/5 px-4 py-3 border-b border-white/5 flex items-center gap-2">
             <Shield className="w-4 h-4 text-orange-500" />
-            <h3 className="font-bold text-gray-800 text-sm">Registrar Information</h3>
+            <h3 className="font-bold text-gray-200 text-sm">Registrar Information</h3>
          </div>
          <div className="p-4">
             <DataRow label="Registrar" value={data.registrar} />
@@ -92,10 +92,10 @@ export function WHOISPanel({ data, isLoading, error }: WHOISPanelProps) {
       </div>
 
       {/* Registrant Contact Card */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
+      <div className="bg-[#111111] rounded-lg border border-white/5 shadow-sm overflow-hidden">
+         <div className="bg-white/5 px-4 py-3 border-b border-white/5 flex items-center gap-2">
             <User className="w-4 h-4 text-orange-500" />
-            <h3 className="font-bold text-gray-800 text-sm">Registrant Contact</h3>
+            <h3 className="font-bold text-gray-200 text-sm">Registrant Contact</h3>
          </div>
          <div className="p-4">
             <DataRow label="Country" value={data.isPrivate ? 'Redacted' : 'Unknown'} />
