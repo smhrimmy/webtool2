@@ -1,3 +1,17 @@
+/**
+ * HostScope Diagnostic Tool
+ * -------------------------
+ * Features included in this build:
+ * - Global DNS Propagation (Fast + Detailed split fetch)
+ * - WHOIS Lookup with Privacy Detection & Copy Support
+ * - SSL Certificate Analysis (CT Logs + Live Check)
+ * - Server/Hosting/ISP Detection via IP Analysis
+ * - CDN & WAF Detection (Cloudflare, AWS, etc.)
+ * - Email Health Checks (MX, SPF, DMARC)
+ *
+ * Code execution starts below.
+ */
+
 export const config = {
   runtime: 'edge',
 };
@@ -736,7 +750,7 @@ export default async function handler(req: Request) {
     // Mode-based execution for faster partial updates
     if (mode === 'dns') {
         const resolversToCheck = getResolvers();
-        const dnsPromise = Promise.all(recordTypes.map(async (type: string) => {
+        const dnsPromise = Promise.all((recordTypes as string[]).map(async (type: string) => {
           const results = await Promise.all(resolversToCheck.map(resolver => queryDNS(cleanDomain, type, resolver)));
           const regions = ['North America', 'Europe', 'Asia', 'South America', 'Africa', 'Australia'];
           return {

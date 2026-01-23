@@ -1,4 +1,18 @@
-import { Copy, RefreshCw, AlertTriangle, Globe, User, Shield } from 'lucide-react';
+/**
+ * HostScope Diagnostic Tool
+ * -------------------------
+ * Features included in this build:
+ * - Global DNS Propagation (Fast + Detailed split fetch)
+ * - WHOIS Lookup with Privacy Detection & Copy Support
+ * - SSL Certificate Analysis (CT Logs + Live Check)
+ * - Server/Hosting/ISP Detection via IP Analysis
+ * - CDN & WAF Detection (Cloudflare, AWS, etc.)
+ * - Email Health Checks (MX, SPF, DMARC)
+ *
+ * Code execution starts below.
+ */
+
+import { Copy, RefreshCw, AlertTriangle, Globe, User, Shield, Lock, Calendar } from 'lucide-react';
 import { WHOISData } from '@/types/diagnostic';
 import { useState } from 'react';
 import { toast } from 'sonner';

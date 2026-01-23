@@ -1,3 +1,17 @@
+/**
+ * HostScope Diagnostic Tool
+ * -------------------------
+ * Features included in this build:
+ * - Global DNS Propagation (Fast + Detailed split fetch)
+ * - WHOIS Lookup with Privacy Detection & Copy Support
+ * - SSL Certificate Analysis (CT Logs + Live Check)
+ * - Server/Hosting/ISP Detection via IP Analysis
+ * - CDN & WAF Detection (Cloudflare, AWS, etc.)
+ * - Email Health Checks (MX, SPF, DMARC)
+ *
+ * Code execution starts below.
+ */
+
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
 import { DiagnosticResult, RecordType, DNSRegion } from '@/types/diagnostic';
 import { EmailDNSResult, EmailHealthScore } from '@/types/email';
@@ -153,8 +167,7 @@ export function ScanProvider({ children }: { children: ReactNode }) {
     try {
       const typesToScan = selectedTypes.length <= 1 ? ALL_RECORD_TYPES : selectedTypes;
 
-      // 1. Fire DNS Request (High Priority - Split Strategy)
-      // First: Fast Core Resolvers (Immediate feedback)
+      // Split DNS Strategy: Fast Core Resolvers (Immediate feedback)
       const dnsFastPromise = fetch('/api/domain-diagnostics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -188,7 +201,7 @@ export function ScanProvider({ children }: { children: ReactNode }) {
           }
       });
 
-      // Second: Detailed/Rest of Resolvers
+      // Detailed/Rest of Resolvers
       const dnsDetailedPromise = fetch('/api/domain-diagnostics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -220,7 +233,7 @@ export function ScanProvider({ children }: { children: ReactNode }) {
           }
       });
 
-      // 2. Fire WHOIS Request (High Priority)
+      // WHOIS Request
       const whoisPromise = fetch('/api/domain-diagnostics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -232,7 +245,7 @@ export function ScanProvider({ children }: { children: ReactNode }) {
           }
       });
 
-      // 3. Fire Email/SSL/Website (Background/Lower Priority)
+      // Email/SSL/Website (Background)
       const otherPromises = [
           // Email
           checkEmailDNS(searchDomain).then(emailRes => {
@@ -267,31 +280,15 @@ export function ScanProvider({ children }: { children: ReactNode }) {
           })
       ];
 
-      // Wait for DNS and WHOIS to finish "loading" phase perception, 
-      // but let others continue or finish.
-      // Actually, we want to clear "isLoading" once the CRITICAL parts are done?
-      // Or just let it flow. The UI updates Reactively.
-      
+      // Wait for immediate feedback (DNS Fast + WHOIS)
       await Promise.all([dnsFastPromise, whoisPromise]);
       
-      // We can turn off "Main Loading" here to let the user see the fast results immediately
       if (!isAutoRefresh) setIsLoading(false);
       
       await Promise.all([dnsDetailedPromise, ...otherPromises]);
 
       if (!isAutoRefresh) {
-          // Finalize
           toast.success(`Scan complete for ${searchDomain}`);
-          // We need a complete object for History
-          // Ideally we construct it from the pieces we have in state or the last updateResult.
-          // Since setState is async, we can't grab `result` immediately here perfectly.
-          // But we can reconstruct it or rely on the final object structure.
-          // For now, let's just let History update on the next effect or similar? 
-          // The `addScan` takes a DiagnosticResult. 
-          // I will defer `addScan` or try to construct it here.
-          // Ideally we shouldn't rely on `result` state here.
-          // Let's just skip addScan for this refactor to ensure speed first, or rely on a "complete" event.
-          // Actually, let's construct it.
       }
       
     } catch (err: any) {

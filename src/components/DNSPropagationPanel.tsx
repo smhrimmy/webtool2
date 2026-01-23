@@ -1,3 +1,17 @@
+/**
+ * HostScope Diagnostic Tool
+ * -------------------------
+ * Features included in this build:
+ * - Global DNS Propagation (Fast + Detailed split fetch)
+ * - WHOIS Lookup with Privacy Detection & Copy Support
+ * - SSL Certificate Analysis (CT Logs + Live Check)
+ * - Server/Hosting/ISP Detection via IP Analysis
+ * - CDN & WAF Detection (Cloudflare, AWS, etc.)
+ * - Email Health Checks (MX, SPF, DMARC)
+ *
+ * Code execution starts below.
+ */
+
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Info, Link as LinkIcon, Activity, Globe, Server, Shield } from 'lucide-react';
@@ -54,8 +68,8 @@ export function DNSPropagationPanel({
 
   return (
     <div className="w-full space-y-4">
-      {/* Network & Hosting Info Card (Only for A Records) */}
-      {recordType === 'A' && (hostingInfo || wafCdn?.detected?.length > 0) && (
+      {/* Network & Hosting Info Card (Only for A/AAAA Records) */}
+      {(recordType === 'A' || recordType === 'AAAA') && (hostingInfo || wafCdn?.detected?.length > 0) && (
           <div className="bg-[#111111] border border-white/5 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Hosting / ISP Info */}
               {hostingInfo && (

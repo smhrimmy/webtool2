@@ -1,3 +1,17 @@
+/**
+ * HostScope Diagnostic Tool
+ * -------------------------
+ * Features included in this build:
+ * - Global DNS Propagation (Fast + Detailed split fetch)
+ * - WHOIS Lookup with Privacy Detection & Copy Support
+ * - SSL Certificate Analysis (CT Logs + Live Check)
+ * - Server/Hosting/ISP Detection via IP Analysis
+ * - CDN & WAF Detection (Cloudflare, AWS, etc.)
+ * - Email Health Checks (MX, SPF, DMARC)
+ *
+ * Code execution starts below.
+ */
+
 import { motion } from 'framer-motion';
 import { useScan } from '@/context/ScanContext';
 import { DNSPropagationPanel } from '@/components/DNSPropagationPanel';
@@ -71,7 +85,7 @@ export default function Diagnostics() {
 
                     <div className="mt-6 bg-[#111111] rounded-xl border border-white/5 p-6 min-h-[500px]">
                         <TabsContent value="dns" className="mt-0 space-y-4">
-                            {/* In-Tab Controls for DNS Type - Matching User Requirement for Features */}
+                            {/* In-Tab Controls for DNS Type */}
                             <div className="flex items-center gap-4 mb-4 p-4 bg-white/5 rounded-lg border border-white/10">
                                 <span className="text-sm font-medium text-gray-400">Record Type:</span>
                                 <Select value={activeRecordType} onValueChange={(val) => {
