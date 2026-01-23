@@ -6,7 +6,7 @@ import { SSLPanel } from '@/components/SSLPanel';
 import { WebsiteStatusPanel } from '@/components/WebsiteStatusPanel';
 import { WAFCDNPanel } from '@/components/WAFCDNPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Globe, Shield, Activity, Network, Server, Search } from 'lucide-react';
+import { Globe, Shield, Activity, Network, Server, Search, Mail } from 'lucide-react';
 import { DomainSearch } from '@/components/DomainSearch';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
