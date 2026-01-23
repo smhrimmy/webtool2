@@ -20,7 +20,8 @@ export default function Diagnostics() {
     isLoading, 
     runDiagnostics, 
     history,
-    setSelectedTypes
+    setSelectedTypes,
+    refreshWhois
   } = useScan();
 
   const [activeRecordType, setActiveRecordType] = useState('A');
@@ -119,7 +120,11 @@ export default function Diagnostics() {
                         </TabsContent>
                         
                         <TabsContent value="whois" className="mt-0">
-                            <WHOISPanel data={result?.whois || null} isLoading={isLoading} />
+                            <WHOISPanel 
+                                data={result?.whois || null} 
+                                isLoading={isLoading} 
+                                onRefresh={refreshWhois}
+                            />
                         </TabsContent>
                         
                         <TabsContent value="ssl" className="mt-0">
